@@ -635,9 +635,20 @@ class RoleModel:
             if dindex == 0:
                 optimization['input'] = res['decompiler_output']
             else:
+                found = False
+                i = dindex - 1
+                while i >= 0:
+                    dir_key = res['sorted_directions'][i]
+                    if 'output' in res['optimization'].get(dir_key, {}):
+                        optimization['input'] = res['optimization'][dir_key]['output']
+                        found = True
+                        break
+                    i -= 1
+                if not found:
+                    optimization['input'] = res['decompiler_output']
                 # print(res['sorted_directions'])
                 # print(res['sorted_directions'][dindex - 1])
-                optimization['input'] = res['optimization'][res['sorted_directions'][dindex - 1]]['output']
+                # optimization['input'] = res['optimization'][res['sorted_directions'][dindex - 1]]['output']
 
             """
             <adviced_code> is the suggested code from advisor, <response> is the direct resposne that advisor
