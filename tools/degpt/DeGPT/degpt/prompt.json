@@ -44,7 +44,7 @@
         "name": "reconstruct_struct", 
         "prompt": {
             "role": "user",
-            "content": "Analyze the following C functions, if they contain unclear pointer access, convert to simplified, human-like C code. Prefer readable-style over low-level and definitely do not change any function call or variable, or alter function semantics or add unexisted check. No explanation. \n{code}"
+            "content": "Analyze the following C functions, if they contain unclear pointer access, convert to simplified, human-like C code. Prefer readable-style over low-level and definitely do not change any function call or variable, or alter function semantics or add unexisted check. Retain only appropriate comments. No explanation. \n{code}"
         }
     },
     {
