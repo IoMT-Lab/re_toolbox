@@ -7,10 +7,33 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 RUN apt-get update \
-    && apt-get install -y \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
         clang-format \
         temurin-21-jdk \
         idle \
+        temurin-21-jdk\
+        clang-format \
+        # KLEE + Z3 system dependencies & build tools
+        build-essential \
+        cmake \
+        curl \
+        file \
+        g++-multilib \
+        gcc-multilib \
+        git \
+        unzip \
+        libcap-dev \
+        libgoogle-perftools-dev \
+        libncurses-dev \
+        libsqlite3-dev \
+        libtcmalloc-minimal4 \
+        graphviz \
+        doxygen \
+        clang-15 \
+        llvm-15 \
+        llvm-15-dev \
+        llvm-15-tools \
     && rm -rf /var/lib/apt/lists/*
 
 ADD Python-3.12.10.tar.xz /python
@@ -20,14 +43,67 @@ RUN ./configure --enable-optimizations \
     && make altinstall \ 
     && /usr/local/bin/pip3.12 install pipenv
 
-RUN apt-get update \
-    && apt-get update \
-    && apt-get install -y \
-        clang-format \
-        temurin-21-jdk \
-    && rm -rf /var/lib/apt/lists/*
+RUN /usr/local/bin/pip3.12 install --break-system-packages angr lit wllvm tabulate
 
-RUN /usr/local/bin/pip3.12 install --break-system-packages angr
+# --- Building KLEE and dependencies from source ---
+
+# Stage 3: Build and install Z3 from source
+WORKDIR /tmp/build_z3_src
+RUN git clone https://github.com/Z3Prover/z3.git . && \
+    python3 scripts/mk_make.py && \
+    cd build && \
+    make -j$(nproc) && \
+    make install && \
+    # Clean up the build directory
+    rm -rf /tmp/build_z3_src
+
+# Stage 4: Build klee-uclibc from source and move to a persistent location
+WORKDIR /tmp/build_klee_uclibc_src
+RUN git clone https://github.com/klee/klee-uclibc.git . && \
+    chmod -R +x . && \
+    ./configure --make-llvm-lib --with-cc=clang-15 --with-llvm-config=llvm-config-15 && \
+    make -j$(nproc) && \
+    # Move built klee-uclibc to /opt for KLEE to find
+    mkdir -p /opt/klee-uclibc-built && \
+    cp -R ./* /opt/klee-uclibc-built/ && \
+    # Clean up the temporary build directory
+    rm -rf /tmp/build_klee_uclibc_src
+
+# KLEE will be configured with -DKLEE_UCLIBC_PATH=/opt/klee-uclibc-built
+
+# Stage 5: Copy googletest source to a persistent location
+# KLEE's unit tests require the googletest source directory.
+RUN mkdir -p /opt && cd /opt && \
+    curl -L https://github.com/google/googletest/archive/release-1.11.0.zip -o googletest.zip && \
+    unzip googletest.zip && \
+    rm googletest.zip && \
+    mv googletest-release-1.11.0 googletest-source
+# KLEE will be configured with -DGTEST_SRC_DIR=/opt/googletest-source/googletest
+# (assuming 'googletest' is the subdirectory within your source_googletest folder that contains CMakeLists.txt for gtest)
+# If your source_googletest *is* the googletest directory itself, then use /opt/googletest-source
+
+# Stage 6: Build and install KLEE from source
+WORKDIR /tmp/build_klee_src
+RUN git clone https://github.com/klee/klee.git . && \
+    mkdir build && cd build && \
+    cmake \
+        -DENABLE_SOLVER_STP=OFF \
+        -DENABLE_POSIX_RUNTIME=ON \
+        -DENABLE_UNIT_TESTS=ON \
+        -DKLEE_UCLIBC_PATH=/opt/klee-uclibc-built \
+        -DGTEST_SRC_DIR=/opt/googletest-source \
+        -DLLVM_DIR=/usr/lib/llvm-15/lib/cmake/llvm \
+        -Dgtest_build_tests=OFF \
+        # Add any other KLEE cmake options you need
+        .. && \
+    make -j$(nproc) && \
+    make install && \
+    # Clean up the build directory
+    rm -rf /tmp/build_klee_src
+# --- End of Building KLEE and dependencies ---
+
+# Stage 7: Application setup - copy your project and install Pipfile dependencies
+
 COPY . /app
 WORKDIR /app
 RUN cargo build

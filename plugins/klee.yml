@@ -1,0 +1,7 @@
+---
+name: klee
+input_type: bytecode
+description: KLEE is a symbolic execution engine for the C programming language
+type: bash
+command: ./tools/klee/klee.py
+---
