@@ -7,41 +7,29 @@ A plugin system is available for adding new tools to the toolbox.
 ### Setup
 
 #### Build Docker Image
-To build the docker image, run `docker build -t re_toolbox:latest .` from the root directory
+To build the docker image, run `./build_docker.sh.` from the root directory.
+It builds a specific version of python, so it may take some time on first build
+
+In order to use the ChatGPT-based plugins, you will have to add your OpenAI API key to the relevant location in the docker file
 
 #### Run Docker Image
-To run the docker image, run `docker run --rm -it re_toolbox:latest`.
+To run the docker image, run `./run_docker.sh`.
 This will create a docker container and drop you into the REPL.
 Note that the `exit` command is not currently working properly and you will need to
 use `CTRL+D` to quit the REPL.
+There are two folders that are created `graph` and `struct` that map to volumes within the container.
+These are used as auxilliary storage for the AccessPatternGraph output.
 
-### Examples
+### Plugins / Other tools
+Plugins are added via a YAML file in the `plugins` directory.
+There are currently six plugins and one not-quite plugin.
+The `clang_format` and `demangle` plugins can be used as examples of a basic plugin.
 
-#### Basic usage
+To view the available plugins, run `tool list`:
 
-- `load examples/user_main.o bytecode`
-- `decompiler list-functions`
-- `decompiler decompile user_main`
-- `print`
-- `save source.c`
-
-![Basic Example Output](screenshots/basic_example.png)
-
-#### Plugin usage
-
-- `load examples/user_main.c source`
-- `print`
-- `info`
-- `tool list`
-- `tool run clang_format`
-- `save formatted.c`
-- `info`
-
-![Plugin Example Output Pt1](screenshots/plugin_example_1.png)
-![Plugin Example Output Pt2](screenshots/plugin_example_2.png)
-
-
-
+#### AccessPatternGraph
+The AccessPatternGraph work is a not-quite plugin.
+Rather than running it through the `tool run []` workflow, it has been added as additional functionality that can be triggered on the decompiler
 
 For stack structure rebuilder:
 - `load examples/global_test2 bytecode`
@@ -62,3 +50,72 @@ For stack structure rebuilder:
 ![Structure Analysis](screenshots/structure_result.png)
 
 To analyze the potential data structures, we use Ghidra to summarize their usage and Pcode, perform graph-based feature analysis, and generate corresponding LLM prompts for each data structure object. The results are stored in /tmp/GraphAnalysis.
+
+#### ComCat
+This plugin uses ChatGPT and requires a valid API key to be present when building the Docker image
+
+- `load examples/user_main.c source`
+- `print`
+- `tool run ComCat`
+- `print`
+
+#### DeGPT
+This plugin uses ChatGPT and requires a valid API key to be present when building the Docker image
+Note: this plugin can take minutes to run, and there is no output until it is completed, so be patient.
+
+- `load examples/user_main.c source`
+- `print`
+- `tool run DeGPT`
+- `print`
+
+OR
+
+- `load examples/user_main.o bytecode`
+- `decompiler decompile`
+- `print`
+- `tool run DeGPT`
+- `print`
+
+#### KLEE
+
+- `load wifi_new.bc bytecode`
+- `tool run klee`
+
+
+### Examples
+
+#### Basic usage
+
+- `load examples/user_main.o bytecode`
+- `decompiler list-functions`
+- `decompiler decompile user_main`
+- `print`
+- `save source.c`
+
+![Basic Example Output](screenshots/basic_example.png)
+
+#### Basic Plugin usage
+
+- `load examples/user_main.c source`
+- `print`
+- `info`
+- `tool list`
+- `tool run clang_format`
+- `save formatted.c`
+- `info`
+
+![Plugin Example Output Pt1](screenshots/plugin_example_1.png)
+![Plugin Example Output Pt2](screenshots/plugin_example_2.png)
+
+
+#### Comprehensive Example
+
+- `load examples/user_main.o bytecode`
+- `decompiler decompile`
+- `print`
+- `tool run DeGPT`
+- `print`
+- `tool run ComCat`
+- `print`
+- `tool run clang_format`
+- `print`
