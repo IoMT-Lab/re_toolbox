@@ -4,7 +4,7 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-cinspector = { file = "./cinspector", editable = true }
+cinspector = { path = "./cinspector", editable = false }
 openai = "==0.28.1"
 backoff = "==2.2.1"
 tiktoken = "==0.2.0"
