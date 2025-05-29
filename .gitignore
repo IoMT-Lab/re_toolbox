@@ -1,2 +1,3 @@
 /target
 .env
+tools/degpt/chat_log.json
