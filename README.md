@@ -27,6 +27,8 @@ The `clang_format` and `demangle` plugins can be used as examples of a basic plu
 
 To view the available plugins, run `tool list`:
 
+![Plugin List](screenshots/plugin_list.png)
+
 #### AccessPatternGraph
 The AccessPatternGraph work is a not-quite plugin.
 Rather than running it through the `tool run []` workflow, it has been added as additional functionality that can be triggered on the decompiler
@@ -52,16 +54,24 @@ For stack structure rebuilder:
 To analyze the potential data structures, we use Ghidra to summarize their usage and Pcode, perform graph-based feature analysis, and generate corresponding LLM prompts for each data structure object. The results are stored in /tmp/GraphAnalysis.
 
 #### ComCat
-This plugin uses ChatGPT and requires a valid API key to be present when building the Docker image
+This plugin uses ChatGPT and requires a valid API key to be present when building the Docker image.
+Comcat uses ChatGPT to add comments to source code.
+An example run of ComCat is the following:
 
 - `load examples/user_main.c source`
 - `print`
 - `tool run ComCat`
 - `print`
 
+![ComCat Example Part1](screenshots/comcat_example_1.png)
+![ComCat Example Part2](screenshots/comcat_example_2.png)
+
 #### DeGPT
 This plugin uses ChatGPT and requires a valid API key to be present when building the Docker image
 Note: this plugin can take minutes to run, and there is no output until it is completed, so be patient.
+
+While DeGPT can be run on original source code, it makes more sense to run in on source code decompiled from a binary.
+An example run of DeGPT is the following:
 
 - `load examples/user_main.c source`
 - `print`
@@ -76,15 +86,23 @@ OR
 - `tool run DeGPT`
 - `print`
 
-#### KLEE
+![DeGPT Example Part1](screenshots/degpt_example_1.png)
+![DeGPT Example Part2](screenshots/degpt_example_2.png)
 
-- `load wifi_new.bc bytecode`
+#### KLEE
+This plugin must be run on LLVM bytecode.
+
+- `load examples/wifi_new.bc bytecode`
 - `tool run klee`
 
+![KLEE Example](screenshots/klee_example.png)
+While the output suggests running `tool run klee /examples...`, that is not currently a valid command.
 
 ### Examples
 
 #### Basic usage
+
+Decompiling a single function:
 
 - `load examples/user_main.o bytecode`
 - `decompiler list-functions`
@@ -95,6 +113,8 @@ OR
 ![Basic Example Output](screenshots/basic_example.png)
 
 #### Basic Plugin usage
+
+Running a plugin and saving the resulting file:
 
 - `load examples/user_main.c source`
 - `print`
@@ -109,6 +129,10 @@ OR
 
 
 #### Comprehensive Example
+The tools and transformations can be chained together to incrementally change a file. 
+Suppose we want to decompile a binary, clean it up through DeGPT, add some comments to make it easier to understand, and lastly run it format it so that it is easier to read.
+That can be done with the following sequence. 
+After each operation, the current state of the file can be printed or the file can be saved for later review.
 
 - `load examples/user_main.o bytecode`
 - `decompiler decompile`
@@ -119,3 +143,5 @@ OR
 - `print`
 - `tool run clang_format`
 - `print`
+
+![Comprehensive Example](screenshots/comprehensive_example.png)
