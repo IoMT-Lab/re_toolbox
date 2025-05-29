@@ -43,7 +43,7 @@ RUN ./configure --enable-optimizations \
     && make altinstall \ 
     && /usr/local/bin/pip3.12 install pipenv
 
-RUN /usr/local/bin/pip3.12 install --break-system-packages angr lit wllvm tabulate
+RUN /usr/local/bin/pip3.12 install --break-system-packages angr lit wllvm tabulate networkx scipy matplotlib
 
 # --- Building KLEE and dependencies from source ---
 

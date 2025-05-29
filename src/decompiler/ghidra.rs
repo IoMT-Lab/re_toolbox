@@ -184,7 +184,7 @@ pub fn run_struct_rebuilder(contents: &Vec<u8>) -> Result<()> {
         .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "Failed to resolve script path"))?;
 
 
-    let output = Command::new("python3")
+    let output = Command::new("/usr/local/bin/python3.12")
         .arg(&script_path)
         .output()?;
 
