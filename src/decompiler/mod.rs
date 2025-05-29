@@ -24,6 +24,11 @@ pub enum DecompilerSubcommand {
 
     /// Decompile function, using current decompiler
     Decompile(DecompileArgs),
+
+    DiscoverDataStructures,
+
+    /// Rebuild function's stack variable's structure
+    StackStructRebuild(DecompileArgs),
 }
 
 #[derive(Args, Debug)]
@@ -87,7 +92,7 @@ impl DecompilerSubcommand {
                                 }
                             } else {
                                 println!("!! Unexpected error occurred !!");
-                            }
+                            } 
                         },
                         Format::Source => println!("!! Decompiler cannot be used on Source file !!"),
                     }
@@ -129,6 +134,59 @@ impl DecompilerSubcommand {
                 }
     
             },
+
+            DecompilerSubcommand::DiscoverDataStructures => {
+                if let Some(workfile) = &workspace.active_file {
+                    match workfile.format {
+                        Format::Bytecode => {
+                            println!("Trying to find data structures from {}...", workspace.decompiler);
+
+                            let result = match workspace.decompiler {
+                                Decompiler::Ghidra => ghidra::run_struct_rebuilder(&workfile.contents),
+                                _ => {Err("Angr is not supported for this analysis")}.expect("REASON")
+                            };
+
+                        },
+                        Format::Source => println!("!! Decompiler cannot be used on Source file !!"),
+                    }
+                } else {
+                    println!("! No active file to decompile !");
+                }
+            },
+
+
+            DecompilerSubcommand::StackStructRebuild(decompile_args) => {
+                if let Some(workfile) = &mut workspace.active_file {
+                    match workfile.format {
+                        Format::Bytecode => {
+                            println!("Decompiling function {} with {}... ", decompile_args.function, workspace.decompiler);
+
+                            let function_names = match workspace.decompiler {
+                                Decompiler::Ghidra => ghidra::stack_struct_rebuild(&workfile.contents, &decompile_args.function),
+                                Decompiler::Angr => {
+                                    println!("!! Decompiling with Angr is not currently supported !!");
+                                    Err(anyhow!("bad"))
+                                }
+                            };
+
+                            if let Ok(source) = function_names {
+                                println!("... Function decompiled");
+                                println!("Replacing working file with new content");
+
+                                workfile.format = Format::Source;
+                                workfile.contents = source;
+                                workfile.modified_since_load = true;
+                                workfile.modified_since_last_save = true;
+                            } else {
+                                println!("!! Unexpected error occurred !!");
+                            }
+                        },
+                        Format::Source => println!("!! Decompiler cannot be used on Source file !!"),
+                    }
+                } else {
+                    println!("! No active file to decompile !");
+                }
+            }
         }
     }
 }

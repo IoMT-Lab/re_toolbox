@@ -1,5 +1,5 @@
-use std::{env, io::Write as _, process::Command, str};
-
+use std::{env, fs, io::Write as _, process::Command, str};
+use std::path::PathBuf;
 use anyhow::Result;
 use tempfile;
 
@@ -89,5 +89,100 @@ pub fn decompile_function(contents: &Vec<u8>, function_name: &str) -> Result<Vec
 
         } 
         Ok(func)
+
+}
+
+
+
+
+pub fn run_struct_rebuilder(contents: &Vec<u8>) -> Result<()> {
+    let tdir = tempfile::tempdir()?;
+    let mut tfile = tempfile::NamedTempFile::new()?;
+    tfile.write_all(contents)?;
+
+
+    let ghidra_dir = env::var("GHIDRA_DIR")?;
+    let command_path = ghidra_dir.clone() + "/ghidra_11.2.1_PUBLIC/support/analyzeHeadless";
+
+    let script_path = ghidra_dir.clone() + "/ghidra_11.2.1_PUBLIC/Ghidra/Features/Base/ghidra_scripts";
+    let local_script_path = ghidra_dir.clone() + "/scripts";
+
+    let mut cmd = Command::new(command_path);
+    cmd.arg(tdir.path())
+        .arg("project")
+        .arg("-import")
+        .arg(tfile.path())
+        .arg("-scriptPath")
+        .arg(script_path)
+        .arg("-scriptPath")
+        .arg(local_script_path)
+        .arg("-postScript")
+        .arg("StructRebuilderEntry.java")
+        .arg("deleteProject");
+
+    let res = cmd.output()?;
+
+    if !res.status.success() {
+        eprintln!("stderr: {}", String::from_utf8_lossy(&res.stderr));
+    }
+
+    let plugin_path = env::var("PLUGIN_PATH")
+        .map(PathBuf::from)
+        .map_err(|_| std::io::Error::new(std::io::ErrorKind::NotFound, "PLUGIN_PATH is not set"))?;
+
+    let script_path = plugin_path
+        .parent() // plugins/
+        .map(|p| p.join("tools/AccessPatternGraph/GraphAnalyzer.py"))
+        .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "Failed to resolve script path"))?;
+
+
+    let output = Command::new("python3")
+        .arg(&script_path)
+        .output()?;
+
+    if !output.status.success() {
+        eprintln!("stderr: {}", String::from_utf8_lossy(&output.stderr));
+    }
+    Ok(())
+}
+
+
+pub fn stack_struct_rebuild(contents: &Vec<u8>, func_name: &str) ->Result<Vec<u8>> {
+
+    let tdir = tempfile::tempdir()?;
+    let mut tfile = tempfile::NamedTempFile::new()?;
+    tfile.write_all(contents)?;
+
+
+    let ghidra_dir = env::var("GHIDRA_DIR")?;
+    let command_path = ghidra_dir.clone() + "/ghidra_11.2.1_PUBLIC/support/analyzeHeadless";
+
+    let script_path = ghidra_dir.clone() + "/ghidra_11.2.1_PUBLIC/Ghidra/Features/Base/ghidra_scripts";
+    let local_script_path = ghidra_dir.clone() + "/scripts";
+
+    let mut cmd = Command::new(command_path);
+    cmd.arg(tdir.path())
+        .arg("project")
+        .arg("-import")
+        .arg(tfile.path())
+        .arg("-scriptPath")
+        .arg(script_path)
+        .arg("-scriptPath")
+        .arg(local_script_path)
+        .arg("-postScript")
+        .arg("StructRebuilderEntry.java")
+        .arg("deleteProject");
+
+    let res = cmd.output()?;
+    if !res.status.success() {
+        eprintln!("stderr: {}", String::from_utf8_lossy(&res.stderr));
+    }
+    if let Some(0) = res.status.code() {
+        let output_path = PathBuf::from("/tmp/decompiled_result/").join(format!("{}.txt", func_name));
+        let func_bytes = fs::read(output_path)?;
+        return Ok(func_bytes);
+    }
+
+    Err("Not such function").expect("error")
 
 }
