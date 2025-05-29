@@ -39,5 +39,6 @@ RUN cd tools/degpt && pipenv install
 ENV PLUGIN_PATH=/app/plugins
 ENV GHIDRA_DIR=/app/tools/ghidra
 ENV ANGR_DIR=/app/tools/angr
+ENV CHAT_GPT_API_KEY="YOUR KEY HERE"
 
 CMD [ "/bin/bash", "-c", "/app/target/debug/re_toolbox" ]
