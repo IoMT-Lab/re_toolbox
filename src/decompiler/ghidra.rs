@@ -92,7 +92,55 @@ pub fn decompile_function(contents: &Vec<u8>, function_name: &str) -> Result<Vec
 
 }
 
+pub fn decompile_all(contents: &Vec<u8>) -> Result<Vec<u8>> {
+    let tdir = tempfile::tempdir()?;
+    let mut tfile = tempfile::NamedTempFile::new()?;
+    tfile.write_all(contents)?;
 
+    let ghidra_dir = env::var("GHIDRA_DIR")?;
+    let command_path = ghidra_dir.clone() + "/ghidra_11.2.1_PUBLIC/support/analyzeHeadless";
+    let script_path = ghidra_dir.clone() + "/ghidra_11.2.1_PUBLIC/Ghidra/Features/Base/ghidra_scripts";
+    let local_script_path = ghidra_dir.clone() + "/scripts";
+
+    let res = Command::new(command_path)
+        .arg(tdir.path())
+        .arg("project")
+        .arg("-import")
+        .arg(tfile.path())
+        .arg("-scriptPath")
+        .arg(script_path)
+        .arg("-scriptPath")
+        .arg(local_script_path)
+        .arg("-postScript")
+        .arg("DecompileFile.java")
+        .arg("deleteProject")
+        .output()?;
+
+        let mut decomp = Vec::new();
+        if let Some(0) = res.status.code() {
+            let output = str::from_utf8(&res.stdout)?;
+            let lines = output.split('\n');
+            
+            let mut in_decomp = false;
+            for line in lines {
+                if line.starts_with("INFO  DecompileFile.java>") {
+                    if line.contains("DONE (GhidraScript)") {
+                        break;
+                    }
+                    in_decomp = true;
+                } else if line.contains("(GhidraScript)") {
+                    in_decomp = false;
+                    decomp.push(b'\n');
+                } else if in_decomp {
+                    decomp.extend(line.as_bytes());
+                    decomp.push(b'\n');
+                }
+                
+            }
+
+        } 
+        Ok(decomp)
+}
 
 
 pub fn run_struct_rebuilder(contents: &Vec<u8>) -> Result<()> {

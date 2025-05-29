@@ -56,7 +56,7 @@ impl Display for Decompiler {
 #[derive(Args, Debug)]
 pub struct DecompileArgs {
     /// Function to decompile
-    function: String
+    function: Option<String>
 }
 
 
@@ -105,17 +105,34 @@ impl DecompilerSubcommand {
                 if let Some(workfile) = &mut workspace.active_file {
                     match workfile.format {
                         Format::Bytecode => {
-                            println!("Decompiling function {} with {}... ", decompile_args.function, workspace.decompiler);
-    
-                            let function_names = match workspace.decompiler {
-                                Decompiler::Ghidra => ghidra::decompile_function(&workfile.contents, &decompile_args.function),
-                                Decompiler::Angr => {
-                                    println!("!! Decompiling with Angr is not currently supported !!");
-                                    Err(anyhow!("bad"))
-                                }
+                            let decomp = match &decompile_args.function {
+                                Some(function) => {
+                                    println!("Decompiling function {} with {}... ", function, workspace.decompiler);
+                                    match workspace.decompiler {
+                                            Decompiler::Ghidra => ghidra::decompile_function(&workfile.contents, &function),
+                                            Decompiler::Angr => {
+                                                println!("!! Decompiling with Angr is not currently supported !!");
+                                                Err(anyhow!("bad"))
+                                            }
+                                        }
+                                    }
+                                None => {
+                                    println!("Decompiling whole file with {}...", workspace.decompiler);
+                                        match workspace.decompiler {
+                                            Decompiler::Ghidra => ghidra::decompile_all(&workfile.contents),
+                                            Decompiler::Angr => {
+                                                println!("!! Decompiling with Angr is not currently supported !!");
+                                                Err(anyhow!("bad"))
+                                            }
+                                        }
+                                    }
+                                
                             };
+                            
     
-                            if let Ok(source) = function_names {
+
+    
+                            if let Ok(source) = decomp {
                                 println!("... Function decompiled");
                                 println!("Replacing working file with new content");
     
@@ -159,10 +176,10 @@ impl DecompilerSubcommand {
                 if let Some(workfile) = &mut workspace.active_file {
                     match workfile.format {
                         Format::Bytecode => {
-                            println!("Decompiling function {} with {}... ", decompile_args.function, workspace.decompiler);
+                            println!("Decompiling function {} with {}... ", decompile_args.function.clone().unwrap(), workspace.decompiler);
 
                             let function_names = match workspace.decompiler {
-                                Decompiler::Ghidra => ghidra::stack_struct_rebuild(&workfile.contents, &decompile_args.function),
+                                Decompiler::Ghidra => ghidra::stack_struct_rebuild(&workfile.contents, &decompile_args.function.clone().unwrap()),
                                 Decompiler::Angr => {
                                     println!("!! Decompiling with Angr is not currently supported !!");
                                     Err(anyhow!("bad"))
