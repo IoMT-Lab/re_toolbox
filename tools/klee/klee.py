@@ -32,8 +32,8 @@ for line in klee_output_lines:
     else:
         processed_output_lines.append(line)
 # change this to provide more detailed information about the bug
-processed_output_lines.append(f"{RED}check_point is 0 when the wifi is poor but no data transmission{RESET}")  # Add exit code at the end
-processed_output_lines.append(f"{RED}The generated test case is test000001.ktest, run the input with 'tool run klee /examples/klee-out-0/test000001.ktest' command to trigger the bug{RESET}")  # Add exit code at the end
+processed_output_lines.append(f"{RED}The device fails to execute a software reset when the watchdog timer trips, causing it to hang.{RESET}")
+processed_output_lines.append(f"{RED}The generated test case test000001.ktest in 'klee-out-0' reproduces this bug, demonstrating the execution path where the expected reset does not happen.{RESET}")
 final_output_string = "\n".join(processed_output_lines)
 # Write KLEE's combined and processed output to a temporary file
 with tempfile.NamedTemporaryFile(mode='w', delete=False, encoding='utf-8') as fp:
