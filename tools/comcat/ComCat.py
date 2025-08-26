@@ -30,7 +30,7 @@ Template:
  * @exception [ExceptionType] [Description of the exception and when it can occur]
  * ...
  */""",
-    """Given the following C/C++ variable, constant, or literal, generate a comment using this template that summarizes its functionality in a single line with no line breaks.\n\nTemplate:\n// [Variable/Constant/Literal Name]: [Description and purpose].""",    
+    """Given the following C/C++ variable, constant, or literal, generate a comment using this template that summarizes its functionality with regards to its use throughout the code in a single line with no line breaks. If there are multiple variables, group them by functionality. If unknown, simply state "unknown" for description and purpose.\n\nTemplate:\n// [Variable/Constant/Literal Name(s)]: [Description and purpose].""",    
     """Given the following C/C++ code, generate a comment using this template that summarizes the code functionality and why it was implemented the way it was in 30 words or less. If it is not relevant, ignore the approach section of the template. \n\nTemplate:\n\n// Function: [Functionality and purpose].\n// Approach: [Approach or strategy].""",
     """Given the following C/C++ code, generate a comment using this template that describes the branch conditions and functionalities in the code in 30 words or less.
 
@@ -39,9 +39,6 @@ Template:
 // Function: [Functionality and Purpose]""",
     """Given the following C/C++ code, generate a comment using this template that summarizes the code functionality and why it was implemented the way it was in 30 words or less. If it is not relevant, ignore the approach section of the template. \n\nTemplate:\n\n// Function: [Brief summary of what the code does and its purpose].\n// Approach: [The main approach or strategy used in the code]."""
 ]
-
-
-
 
 
 
