@@ -6,7 +6,6 @@ operator: partially adopt the advice from advisor, ensure the original semantic
 referee: comment on the changed code, provide next step for refinement
 """
 
-
 import os
 import re
 import sys
@@ -26,20 +25,14 @@ from util import Log, is_code_in_response, response_filter, check_dir, get_outpu
 from mssc import SemanticComparison
 from chat import QueryChatGPT
 
-
 logger = Log().get(__file__)
-
 
 PROMPT_PATH = os.path.join(DIR, 'prompt.json')  # file path storing the prompts
 
 
 def run_timer(func, *, args = [], time = 1, info = 'run_timer failed'):
-    """
-    timer - limit the running time of the func
-    """
-
     def timeout_callback(signum, frame):
-        raise Exception(f'timeout')
+        raise Exception('timeout')
 
     signal.signal(signal.SIGALRM, timeout_callback)
     signal.alarm(time)
@@ -54,8 +47,6 @@ def run_timer(func, *, args = [], time = 1, info = 'run_timer failed'):
 
 
 def is_valid_json(data: str) -> bool:
-    """ check whether the data is in json format """
-
     try:
         json.loads(data)
     except ValueError:
@@ -64,24 +55,11 @@ def is_valid_json(data: str) -> bool:
 
 
 def get_prompt(name: str, _type: str, prompt_path: str = PROMPT_PATH) -> Optional[Dict[str, str]]:
-    """
-    Access the prompt
-
-    Args:
-        name: the name of the prompt
-        _type: the type of the prompt
-        prompt_path: the path of the prompt file
-
-    Returns:
-        a dict containing two keys: 'role' and 'content'
-    """
     import json
-
     prompts = None
     with open(prompt_path, 'r') as f:
         prompts = json.load(f)
-    assert(prompts)
-
+    assert prompts
     for _p in prompts:
         if _p['name'] == name and _p['type'] == _type:
             return _p['prompt']
@@ -90,16 +68,9 @@ def get_prompt(name: str, _type: str, prompt_path: str = PROMPT_PATH) -> Optiona
 
 @unique
 class DType(str, Enum):
-    """
-    The types of the directions from referee.
-
-    perhaps add more optimization types...
-    """
-
     ADD_COMMENT = 'ADD_COMMENT'
     RENAME_VAR = 'RENAME_VAR'
     SIMPLIFY = 'SIMPLIFY'
-
     STRUCT_REC = 'STRUCT_REC'
     CF_SIMPLIFY = 'CF_SIMPLIFY'
     LIB_REC = 'LIB_REC'
@@ -107,28 +78,12 @@ class DType(str, Enum):
 
 
 class Role:
-    """
-    The base class of three roles: referee, advisor, operator
-    """
-
     def __init__(self):
         pass
 
 
 class Advisor(Role):
-    """
-    Provide specific advice for the code change.
-
-    Attributes:
-        cm: the chat manager
-        dtype_mapping: the mapping from direction type to the corresponding process function
-
-    Methods:
-        get_advice(code: str, dtype: DType): Let chatgpt give detailed modification method for code based on dtype
-    """
-
     def __init__(self):
-
         self.dtype_mapping = {
             DType.ADD_COMMENT: self._add_comment,
             DType.RENAME_VAR: self._rename_var,
@@ -139,41 +94,22 @@ class Advisor(Role):
         }
 
     def get_advice(self, code: str, dtype: DType) -> Tuple[str, Optional[str]]:
-        """ Let chatgpt give detailed modification method for code based on dtype
-
-        This function first finds the corresponding processing method from
-        self.dtype_mapping based on dtype, then calls the method to get
-        the new code and returns it.
-
-        Args:
-            code: the code waiting for advice
-            dtype: the type of the advice (from referee)
-        Returns:
-            a tuple containing the new advised code and the response from ChatGPT
-        """
-
         if dtype not in self.dtype_mapping.keys():
             logger.warning(f"Fail to get the processing method for the dtype {dtype}, skip")
-            return (code, None)  # return original code, no change
-
+            return (code, None)
         method = self.dtype_mapping[dtype]
         code, response = method(code)
-        # logger.info(f"[Advisor] {'='*10} response for {dtype} {'='*10} \n {response} \n {'='*20}")
         return (code, response)
-
-    """ ============= Define the processing methods in the following ============== """
 
     @staticmethod
     def _replace_variable_name(old_new_dic, code) -> str:
         cc = CCode(code)
         ids = cc.get_by_type_name('identifier')
         old_names = list(old_new_dic.keys())
-
         for id in ids:
             s_pos = Util.point2index(code, id.start_point[0], id.start_point[1])
-            assert (s_pos)
             e_pos = Util.point2index(code, id.end_point[0], id.end_point[1])
-            assert (e_pos)
+            assert s_pos is not None and e_pos is not None
             if str(id) in old_names:
                 code = code[:s_pos] + old_new_dic[str(id)] + code[e_pos:]
                 return code
@@ -185,37 +121,22 @@ class Advisor(Role):
         while last_code != code:
             last_code = code
             code = Advisor._replace_variable_name(old_new_dic, code)
-
         return code
 
     def _rename_var(self, code: str, response: Optional[str] = None) -> Tuple[str, str]:
-        """
-        Rename the variables in the code
-
-        the param <response> is used for replay
-        """
-
         prompt = get_prompt('rename_var', 'advisor')
-        assert (prompt)
+        assert prompt
         if not response:
             q = QueryChatGPT()
             q.insert_system_prompt('You provide the programming suggestions.')
             response = q.query(prompt['content'].format(code=code))
-
-        assert(isinstance(response, str))
-
-        """
-        TODO (magic): we do replacement since the json like {'a': 'b'} is treated as invalid
-        """
+        assert isinstance(response, str)
         if "':" in response:
             response = response.replace("'", '"')
-
         if not is_valid_json(response):
             logger.warning(f"Fail to rename variables since the response is not valid JSON: {response}")
             return (code, response)
-
         old_new_dic = json.loads(response)
-
         try:
             code = self.replace_variable_name(old_new_dic, code)
         except Exception as e:
@@ -224,89 +145,61 @@ class Advisor(Role):
         return (code, response)
 
     def _add_comment(self, code: str) -> Tuple[str, str]:
-        """
-        Add comment to explain the purpose
-        """
         prompt = get_prompt('add_comment', 'advisor')
-        assert(prompt)
+        assert prompt
         q = QueryChatGPT()
         q.insert_system_prompt('You provide the programming suggestions.')
         response = q.query(prompt['content'].format(code=code))
-        assert (isinstance(response, str))
+        assert isinstance(response, str)
         response = response_filter(response)
         if not is_code_in_response(code, response):
             response = f"\\*{response}*\\ \n \n{code}"
         return (response, response)
 
     def _simplify(self, code: str) -> Tuple[str, str]:
-        """
-        Simplify the code
-        """
         prompt = get_prompt('remove_unnecessary', 'advisor')
-        assert(prompt)
+        assert prompt
         q = QueryChatGPT()
         q.insert_system_prompt('You provide the programming suggestions.')
         response = q.query(prompt['content'].format(code=code))
-        assert (isinstance(response, str))
+        assert isinstance(response, str)
         response = response_filter(response)
-        # here we extract the function to avoid to additional info from ChatGPT
-        # try:
-        #     response = CCode(response).get_by_type_name('function_definition')[0].src
-        # except Exception as e:
-        #     print(e)
         return (response, response)
-    
 
     def _struct_rec(self, code: str) -> Tuple[str, str]:
-        """
-        Reconstruct the struct
-        """
         prompt = get_prompt('reconstruct_struct', 'advisor')
-        assert(prompt)
+        assert prompt
         q = QueryChatGPT()
         q.insert_system_prompt('You provide the programming suggestions.')
         response = q.query(prompt['content'].format(code=code))
-        assert (isinstance(response, str))
+        assert isinstance(response, str)
         response = response_filter(response)
         return (response, response)
-    
+
     def _cf_simplify(self, code: str) -> Tuple[str, str]:
-        """
-        Simplify the control flow
-        """
         prompt = get_prompt('cf_simplify', 'advisor')
-        assert(prompt)
+        assert prompt
         q = QueryChatGPT()
         q.insert_system_prompt('You provide the programming suggestions.')
         response = q.query(prompt['content'].format(code=code))
-        assert (isinstance(response, str))
+        assert isinstance(response, str)
         response = response_filter(response)
         return (response, response)
-    
 
     def _lib_rec(self, code: str, response: Optional[str] = None) -> Tuple[str, str]:
-        """
-        Reconstruct the library call
-        """
         prompt = get_prompt('reconstruct_lib', 'advisor')
-
-        assert (prompt)
+        assert prompt
         if not response:
             q = QueryChatGPT()
             q.insert_system_prompt('You provide the programming suggestions.')
             response = q.query(prompt['content'].format(code=code))
-            
-        assert (isinstance(response, str))
-
+        assert isinstance(response, str)
         if "':" in response:
             response = response.replace("'", '"')
-
         if not is_valid_json(response):
             logger.warning(f"Fail to rename variables since the response is not valid JSON: {response}")
             return (code, response)
-
         old_new_dic = json.loads(response)
-
         try:
             code = self.replace_variable_name(old_new_dic, code)
         except Exception as e:
@@ -315,86 +208,39 @@ class Advisor(Role):
         return (code, response)
 
 
-
 class Operator(Role):
-    """
-    Adopt the advice from advisor, ensure the original semantic.
-    """
     def __init__(self):
         pass
 
     def operate(self, original_code: str, advised_code: str, dtype: DType) -> str:
-        """
-        Adopt the advice from advisor, ensure the original semantic.
-
-        Args:
-            original_code: the original code
-            adivsed_code: new code advised by advisor
-            dtype: the change type
-
-        Returns:
-            the new code, some unreasonable changes of advised_code may be discarded
-        """
-
         if dtype == DType.ADD_COMMENT:
             return advised_code
         elif dtype == DType.RENAME_VAR:
             return advised_code
         elif dtype == DType.SIMPLIFY:
             return advised_code
-        
         elif dtype == DType.STRUCT_REC:
             return advised_code
         elif dtype == DType.CF_SIMPLIFY:
             return advised_code
         elif dtype == DType.LIB_REC:
             return advised_code
-
-            """ TODO: rewrite semantic comparison for better accuracy
-            semantic_cmp = SemanticComparison(original_code, advised_code)
-            if run_timer(semantic_cmp.is_semantic_equal, time=10):
-            # if semantic_cmp.is_semantic_equal():
-                return advised_code
-            else:
-                return original_code
-            """
         else:
             logger.warning(f"The operator on {dtype} is not implemented, skip this change")
-
         return original_code
 
 
 class Referee(Role):
-    """
-    Comment on the changed code, provide next step for refinement.
-
-    Attributes:
-        cm: the chat manager
-
-    Methods:
-        get_direction: get the direction for the code change
-    """
     def __init__(self):
         pass
 
     def get_direction(self, code: str) -> Tuple[str, List[DType]]:
-        """
-        Get the direction for the code change.
-
-        Args:
-            code: the code waiting for comment
-        Returns:
-            A tuple containing the response from ChatGPT and the list of directions (DType)
-        """
         prompt = get_prompt('need', 'referee')
-        assert(prompt)
-
-        # complement the prompt with the code
+        assert prompt
         q = QueryChatGPT()
         q.insert_system_prompt('You provide the programming suggestions')
         response = q.query(prompt['content'].format(code=code))
-        assert (isinstance(response, str))
-        # logger.info('[Referee] response: {}'.format(response))
+        assert isinstance(response, str)
         directions = self._parse_need(response)
         return (response, directions)
 
@@ -402,7 +248,7 @@ class Referee(Role):
         rtn = []
         pattern = r'\b(?:Yes|yes|No|no)\b'
         matches = re.findall(pattern, response)
-        assert (len(matches) == 6)
+        assert len(matches) == 6
         if matches[0] in ['Yes', 'yes']:
             rtn.append(DType.SIMPLIFY)
         if matches[1] in ['Yes', 'yes']:
@@ -413,14 +259,10 @@ class Referee(Role):
             rtn.append(DType.STRUCT_REC)
         if matches[4] in ['Yes', 'yes']:
             rtn.append(DType.CF_SIMPLIFY)
-        # if matches[5] in ['Yes', 'yes']:
-        #     rtn.append(DType.LIB_REC)
         return rtn
 
 
 def single_opt(decompile_code: str, opt_type: DType) -> dict:
-    """ execute single optimization assigned by <opt_type> on <decompile_code> """
-
     dic = {'decompiler_output': decompile_code}
     advisor = Advisor()
     advisor_code, response = advisor.get_advice(decompile_code, opt_type)
@@ -431,17 +273,7 @@ def single_opt(decompile_code: str, opt_type: DType) -> dict:
 
 
 class RoleModel:
-    """
-    manage the workflow of the three-role model
-    """
-
     def __init__(self, *, decompile_code: Optional[str] = None, src_code: Optional[str] = None):
-        """
-        Args:
-            decompile_code: decompiler output of the function
-            src_code: the source code of the function (used for evaluation, optional)
-        """
-
         self.code = decompile_code
         self.src_code = src_code
         self.advisor = Advisor()
@@ -449,93 +281,63 @@ class RoleModel:
         self.referee = Referee()
 
     def sort_directions(self, direction_lst: List[DType]) -> List[str]:
-        """
-        remove None and uninterested dtype, sort the left
-        directions by the priority
-        """
-
         sort_index = {
-            DType.SIMPLIFY: 0,  # highest priority
+            DType.SIMPLIFY: 0,
             DType.ADD_COMMENT: 0.5,
             DType.RENAME_VAR: 1,
             DType.STRUCT_REC: 2,
             DType.CF_SIMPLIFY: 0.1,
             DType.LIB_REC: 3,
         }
-
-        sorted_directions = list()
-        # sort the directions based on sort_index and put the result in sorted_directions
+        sorted_directions: List[DType] = []
         directions = set(direction_lst)
         for _d in directions:
-            # filter out None and uninterested DType
-            if _d is None or sort_index[_d] == -1:
+            if _d is None or sort_index.get(_d, -1) == -1:
                 continue
-
             if not sorted_directions:
                 sorted_directions.append(_d)
                 continue
-
+            inserted = False
             for _i, _sd in enumerate(sorted_directions):
                 if sort_index[_d] < sort_index[_sd]:
                     sorted_directions.insert(_i, _d)
+                    inserted = True
                     break
-                if _i == len(sorted_directions) - 1:
-                    sorted_directions.append(_d)
-                    break
-
-        return sorted_directions
+            if not inserted:
+                sorted_directions.append(_d)
+        # return enum values as strings for downstream string comparisons
+        return [d.value for d in sorted_directions]
 
     @staticmethod
     def sub_wf(wf1: str, wf2: str) -> int:
-        """ whether wf1 is the later step (or same) of wf2, wf - workflow """
         dic = {
             'INIT': 0,
             'REFEREE': 1,
             'OPT:SIMPLIFY': 2,
             'DONE': 3,
         }
-
         return dic[wf1] - dic[wf2]
 
     @staticmethod
     def restore_to(workflow: str, existing_json: str, output: Optional[str] = None):
-        """
-        readin the existing_json and restore it to <workflow>, then write
-        the new dic to output (original existing_json as default)
-
-        for example, resotre the dic whose workflow status is
-        DONE to OPT:SIMPLIFY
-        """
-
-        assert (workflow in ['INIT', 'REFEREE', 'OPT:SIMPLIFY', 'DONE'])
-
+        assert workflow in ['INIT', 'REFEREE', 'OPT:SIMPLIFY', 'DONE']
         r = open(existing_json, 'r')
         res = json.load(r)
         r.close()
         cur_workflow = res['workflow']
-
-        # if the target workflow is the later step of the cur_workflow, skip directly
         if RoleModel.sub_wf(workflow, cur_workflow) >= 0:
             print(f"Skip {existing_json} (workflow: {cur_workflow})")
             return
-
-        # require restore to the status before DONE (i.e., OPT:SIMPLIFY, REFEREE, INIT)
         if RoleModel.sub_wf(workflow, 'DONE') < 0:
-            # remove the optimizations after SIMPLIFY
             if 'SIMPLIFY' in res['optimization'].keys():
                 res['optimization'] = {'SIMPLIFY': res['optimization']['SIMPLIFY']}
             else:
                 res['optimization'] = dict()
-
-        if RoleModel.sub_wf(workflow, 'OPT:SIMPLIFY') < 0:  # REFEREE or INIT
-            # remove the optimization SIMPLIFY
+        if RoleModel.sub_wf(workflow, 'OPT:SIMPLIFY') < 0:
             res['optimization'].clear()
-
-        if RoleModel.sub_wf(workflow, 'REFEREE') < 0:  # INIT
-            # remove optimization dic and direction-related things
+        if RoleModel.sub_wf(workflow, 'REFEREE') < 0:
             for _ in ['optimization', 'sorted_directions', 'original_directions', 'original_directions_src']:
                 res.pop(_)
-
         res['workflow'] = workflow
         out = output if output else existing_json
         with open(out, 'w') as w:
@@ -543,45 +345,10 @@ class RoleModel:
             json.dump(res, w, indent=4)
 
     def work(self, end_at: str = 'DONE', existing_json: Optional[str] = None):
-        """
-        self.work() will return a dict describing the
-        status of the refinement.
-        {
-            'workflow': str, # REFEREE,
-            'source_code': str,
-            'decompiler_output': str,
-            'original_directions_src': str,
-            'original_directions': DType,
-            'sorted_directions': DType,
-            'optimization': {
-                'optimization type name': {
-                    'input': 'input code',
-                    'output': 'output code',
-                    'status': 'SUCC or FAIL',
-                    'append': 'any other comment',
-                    'advisor': 'reponse from advisor',
-                    'operator': 'reponse from operator',
-                },
-                ...... ,
-            }
-        }
-
-
-        To facilitate the analysis, we design the stop-recover mechanism
-        for the workflow. The field 'workflow' in the output json file lables
-        the current workflow status.
-
-            INIT - Nothing is done yet.
-            REFEREE - The role referee ends.
-            OPT:SIMPLIFY - The SIMPLIFY optimization is done.
-            DONE - All done.
-        """
-
         if existing_json:
             res = None
             with open(existing_json, 'r') as r:
                 res = json.load(r)
-            # if the loaded json records the work that already runs end_at
             if self.sub_wf(res['workflow'], end_at) >= 0:
                 return res
         else:
@@ -590,47 +357,34 @@ class RoleModel:
             res['decompiler_output'] = self.code
             res['workflow'] = 'INIT'
 
-        # check user assigned end_at
         if self.sub_wf(end_at, 'INIT') <= 0:
             return res
-        # else:
-        #     print('pass INIT checking')
 
-        # the role referee starts working
         if self.sub_wf('REFEREE', res['workflow']) > 0:
             response, directions = self.referee.get_direction(res['decompiler_output'])
             res['original_directions_src'] = response
             res['original_directions'] = directions
-            # logger.info(f'[RoleModel] directions: {directions}')
-
-            directions = self.sort_directions(directions)
-            res['sorted_directions'] = directions
-            # logger.info(f'[RoleModel] sorted directions: {directions}')
-
+            directions_sorted = self.sort_directions(directions)
+            res['sorted_directions'] = directions_sorted
             res['optimization'] = dict()
             res['workflow'] = 'REFEREE'
 
-        # check user assigned end_at
         if self.sub_wf(end_at, res['workflow']) == 0:
             return res
 
         if 'SIMPLIFY' not in res['sorted_directions'] and self.sub_wf('OPT:SIMPLIFY', res['workflow']) > 0:
             res['workflow'] = 'OPT:SIMPLIFY'
 
-        # start checking OPT:SIMPLIFY
         if self.sub_wf(end_at, res['workflow']) == 0:
             return res
 
         for _direction in res['sorted_directions']:
-
-            # Skip if OPT:SIMPLIFY is already done. Mainly used for existing_json.
             if _direction == 'SIMPLIFY' and self.sub_wf('OPT:SIMPLIFY', res['workflow']) <= 0:
                 continue
 
             optimization = dict()
             res['optimization'][_direction] = optimization
 
-            # input is the output of the last optimization
             dindex = res['sorted_directions'].index(_direction)
             if dindex == 0:
                 optimization['input'] = res['decompiler_output']
@@ -646,28 +400,19 @@ class RoleModel:
                     i -= 1
                 if not found:
                     optimization['input'] = res['decompiler_output']
-                # print(res['sorted_directions'])
-                # print(res['sorted_directions'][dindex - 1])
-                # optimization['input'] = res['optimization'][res['sorted_directions'][dindex - 1]]['output']
 
-            """
-            <adviced_code> is the suggested code from advisor, <response> is the direct resposne that advisor
-            gets from ChatGPT. For add_comment and structure simplification, they are the smae.
-            """
-            adviced_code, response = self.advisor.get_advice(optimization['input'], _direction)
+            adviced_code, response = self.advisor.get_advice(optimization['input'], DType(_direction))
             optimization['advisor'] = adviced_code
             optimization['advisor_response'] = response
             if adviced_code == optimization['input']:
                 optimization['status'] = 'FAIL|ADVISOR'
-                # check SIMPLIFY
                 if _direction == 'SIMPLIFY' and self.sub_wf('OPT:SIMPLIFY', res['workflow']) > 0:
                     res['workflow'] = 'OPT:SIMPLIFY'
                 if self.sub_wf(end_at, 'OPT:SIMPLIFY') == 0:
                     return res
-                # end check
                 continue
 
-            optimization['operator'] = self.operator.operate(optimization['input'], adviced_code, _direction)
+            optimization['operator'] = self.operator.operate(optimization['input'], adviced_code, DType(_direction))
 
             if optimization['operator'] == optimization['input']:
                 optimization['status'] = 'FAIL|OPERATOR'
@@ -676,12 +421,10 @@ class RoleModel:
                 optimization['status'] = 'SUCC'
                 optimization['output'] = optimization['operator']
 
-            # check SIMPLIFY
             if _direction == 'SIMPLIFY' and self.sub_wf('OPT:SIMPLIFY', res['workflow']) > 0:
                 res['workflow'] = 'OPT:SIMPLIFY'
             if self.sub_wf(end_at, 'OPT:SIMPLIFY') == 0:
                 return res
-            # end check
 
         res['workflow'] = 'DONE'
         res['output'] = get_optimized_from_dic(res)
@@ -689,11 +432,6 @@ class RoleModel:
 
 
 def replay_advisor_rename(dic_path):
-    """
-    Given the result dic and optimization type, this function replays the
-    workflow to figure out the reason of failure.
-    """
-
     dic = None
     with open(dic_path, 'r') as r:
         dic = json.load(r)
@@ -704,20 +442,12 @@ def replay_advisor_rename(dic_path):
 
 
 def restore_dir(dir_path: str, workflow: str):
-    """
-    restore all dic under dir_path to workflow
-    """
-
     for case in os.listdir(dir_path):
         case = os.path.join(dir_path, case)
         RoleModel.restore_to(workflow, case)
 
 
 def resume_from_dic(dir_path: str, workflow: str):
-    """
-    read data from the existing dic in dir_path and execute until workflow
-    """
-
     for case in os.listdir(dir_path):
         case = os.path.join(dir_path, case)
         model = RoleModel()
@@ -739,24 +469,169 @@ def get_optimized_from_dic(dic) -> str:
 
 
 def opt_str2dtype(opt_type: str) -> DType:
-
     mapping = {
         'rename': DType.RENAME_VAR,
         'simplify': DType.SIMPLIFY,
         'comment': DType.ADD_COMMENT,
         'all': DType.ALL,
     }
-
     return mapping[opt_type]
 
 
-def single_run(decompile_code: str, output: str, opt_type: str) -> None:
 
-    assert (opt_type in ['rename', 'simplify', 'comment', 'all'])
+def _node_slice(code: str, node) -> Tuple[int, int, str]:
+    s_pos = getattr(node, "start_byte", None)
+    e_pos = getattr(node, "end_byte", None)
+    if isinstance(s_pos, int) and isinstance(e_pos, int) and 0 <= s_pos <= e_pos <= len(code):
+        return s_pos, e_pos, code[s_pos:e_pos]
 
     try:
+        sp = getattr(node, "start_point", None)
+        ep = getattr(node, "end_point", None)
+        if sp is not None and ep is not None:
+            s_idx = Util.point2index(code, sp[0], sp[1])
+            e_idx = Util.point2index(code, ep[0], ep[1])
+            if s_idx is not None and e_idx is not None and 0 <= s_idx <= e_idx <= len(code):
+                return s_idx, e_idx, code[s_idx:e_idx]
+    except Exception:
+        pass
+
+    t = getattr(node, "src", None)
+    if not t:
+        t = str(node) if node is not None else ""
+    if t:
+        idx = code.find(t)
+        if idx != -1:
+            return idx, idx + len(t), t
+
+    raise ValueError("cannot map node to source")
+
+
+def _guess_func_name(func_text: str) -> str:
+    try:
+        head = func_text.split('{', 1)[0]
+    except Exception:
+        head = func_text
+    pre = head.split('(', 1)[0]
+    ids = re.findall(r'[A-Za-z_]\w*', pre)
+    return ids[-1] if ids else 'ANON_FUNC'
+
+
+def split_functions_with_spacers(code: str) -> List[Dict]:
+    cc = CCode(code)
+    fns = cc.get_by_type_name('function_definition')
+    spans = []
+    for fn in fns:
+        try:
+            s, e, t = _node_slice(code, fn)
+        except Exception as exc:
+            logger.warning(f"Failed to slice a function node: {exc}")
+            # best-effort: try node.src presence
+            t = getattr(fn, "src", None)
+            if not t:
+                # skip un-mappable node
+                continue
+            idx = code.find(t)
+            if idx == -1:
+                continue
+            s, e = idx, idx + len(t)
+        name = _guess_func_name(t)
+        spans.append((s, e, t, name))
+    spans.sort(key=lambda x: x[0])
+
+    pieces = []
+    cur = 0
+    for s, e, t, name in spans:
+        if s > cur:
+            pieces.append({"type": "text", "text": code[cur:s]})
+        pieces.append({"type": "func", "name": name, "text": t, "start": s, "end": e})
+        cur = e
+    if cur < len(code):
+        pieces.append({"type": "text", "text": code[cur:]})
+    return pieces
+
+
+def rebuild_code_from_pieces(pieces: List[Dict]) -> str:
+    out = []
+    for p in pieces:
+        if p["type"] == "func":
+            out.append(p.get("out_text", p["text"]))
+        else:
+            out.append(p["text"])
+    return "".join(out)
+
+
+def multi_run(decompile_code: str, output: str, opt_type: str) -> str:
+    pieces = split_functions_with_spacers(decompile_code)
+    per_func_results = []
+    optimized_any = False
+
+    for idx, p in enumerate(pieces):
+        if p["type"] != "func":
+            continue
+        fn_src = p["text"]
+        fn_name = p["name"]
+
+        try:
+            if opt_type != 'all':
+                dic = single_opt(fn_src, opt_str2dtype(opt_type))
+                out_fn = dic['output']
+            else:
+                model = RoleModel(decompile_code=fn_src)
+                dic = model.work()
+                out_fn = dic['output']
+        except Exception as e:
+            logger.warning(f"[multi_run] {fn_name}: {e}")
+            traceback.print_exc()
+            dic = {"workflow": "INIT", "decompiler_output": fn_src, "output": fn_src, "error": str(e)}
+            out_fn = fn_src
+
+        pieces[idx]["out_text"] = out_fn
+        optimized_any = optimized_any or (out_fn != fn_src)
+
+        per_func_results.append({
+            "index": idx,
+            "name": fn_name,
+            "start": p["start"],
+            "end": p["end"],
+            "result": dic,
+        })
+
+    merged_output = rebuild_code_from_pieces(pieces)
+
+    summary_dic = {
+        "workflow": "DONE" if optimized_any else "INIT",
+        "source_code": None,
+        "decompiler_output": decompile_code,
+        "output": merged_output,
+        "per_function": per_func_results,
+    }
+
+    output_json, output_opt_c = get_output_filenames(output)
+    with open(os.path.join(OUTPUT_DIR, output_json), 'w') as w:
+        json.dump(summary_dic, w, indent=4)
+    with open(os.path.join(OUTPUT_DIR, output_opt_c), 'w') as f:
+        f.write(merged_output)
+
+    return merged_output
+
+
+
+def single_run(decompile_code: str, output: str, opt_type: str) -> None:
+    is_multi = False
+    try:
+        cc = CCode(decompile_code)
+        fns = cc.get_by_type_name('function_definition')
+        is_multi = len(fns) > 1
+    except Exception as e:
+        logger.warning(f"Function detection failed, fallback to single-run: {e}")
+
+    if is_multi:
+        return multi_run(decompile_code, output, opt_type)
+
+    assert opt_type in ['rename', 'simplify', 'comment', 'all']
+    try:
         if opt_type != 'all':
-            # conduct single optimization
             dic = single_opt(decompile_code, opt_str2dtype(opt_type))
         else:
             model = RoleModel(decompile_code=decompile_code)
@@ -769,22 +644,15 @@ def single_run(decompile_code: str, output: str, opt_type: str) -> None:
     output_json, output_opt_c = get_output_filenames(output)
     with open(os.path.join(OUTPUT_DIR, output_json), 'w') as w:
         json.dump(dic, w, indent=4)
-    
     with open(os.path.join(OUTPUT_DIR, output_opt_c), 'w') as f:
         f.write(dic['output'])
-    
     return dic['output']
-
-    # print('='*10 + 'after optimization' + '='*10)
-    # print(dic['output'])
 
 
 def single_run_file(decompile_file: str, output: str, opt_type: str) -> None:
-
     def read_code(f: str) -> str:
         with open(f, 'r') as r:
             return r.read()
-
     single_run(read_code(decompile_file), output, opt_type)
 
 
@@ -799,11 +667,7 @@ def parse_arguments():
 
 
 if __name__ == '__main__':
-
-    
-
     check_dir(OUTPUT_DIR)
-
     args = parse_arguments()
     if args.string:
         single_run(args.string[0], args.string[1], args.t)
