@@ -7,9 +7,9 @@ import subprocess
 import sys
 
 parent_directory = os.environ.get("GHIDRA_DIR")
-scripts_path = os.path.join(parent_directory,"ghidra_11.2.1_PUBLIC/Ghidra/Features/Base/ghidra_scripts")
+scripts_path = os.path.join(parent_directory,"ghidra_10.4_PUBLIC/Ghidra/Features/Base/ghidra_scripts")
 local_script_path = os.path.join(parent_directory, "scripts")
-command_path = os.path.join(parent_directory, 'ghidra_11.2.1_PUBLIC/support/analyzeHeadless')
+command_path = os.path.join(parent_directory, 'ghidra_10.4_PUBLIC/support/analyzeHeadless')
 
 def run(filename, script_name, extra_args = None, stdout_file = None, stderr_file = None):
     with tempfile.TemporaryDirectory() as tempdir:
@@ -21,7 +21,7 @@ def run(filename, script_name, extra_args = None, stdout_file = None, stderr_fil
         if extra_args is not None:
             command.extend(extra_args)
 
-        command.append('deleteProject')
+        command.append('-deleteProject')
         capture_output = (stdout_file is None) and (stderr_file is None)
         completion = subprocess.run(command, text=True, shell=False, capture_output=capture_output, stdout=stdout_file, stderr=stderr_file)
 

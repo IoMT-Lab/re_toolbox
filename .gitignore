@@ -2,3 +2,4 @@
 .env
 tools/degpt/chat_log.json
 .envrc
+**/__pycache__/**
