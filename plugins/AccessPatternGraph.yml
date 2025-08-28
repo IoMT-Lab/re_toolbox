@@ -1,9 +1,0 @@
----
-name: AccessPatternGraph
-input_type: source
-output_type: None
-description: Analyze the access pattern graph's features and generate the LLM prompt for analyzing the data structure types
-type: python
-workdir: tools/AccessPatternGraph
-script: GraphAnalyzer.py
----

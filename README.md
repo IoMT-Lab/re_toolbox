@@ -29,30 +29,6 @@ To view the available plugins, run `tool list`:
 
 ![Plugin List](screenshots/plugin_list.png)
 
-#### AccessPatternGraph
-The AccessPatternGraph work is a not-quite plugin.
-Rather than running it through the `tool run []` workflow, it has been added as additional functionality that can be triggered on the decompiler
-
-For stack structure rebuilder:
-- `load examples/global_test2 bytecode`
-- `decompiler list-functions`
-- `decompiler decompile FUN_00101139`
-- `print`
-
-
-![Stack Structure Rebuilder](screenshots/stack_rebuild_prepare.png)
-![Stack Structure Rebuilder](screenshots/stack_rebuild_result.png)
-
-
-
-- `load examples/bst1 bytecode`
-- `decompiler discover-data-structures`
-
-![Structure Analysis](screenshots/structure_analyze.png)
-![Structure Analysis](screenshots/structure_result.png)
-
-To analyze the potential data structures, we use Ghidra to summarize their usage and Pcode, perform graph-based feature analysis, and generate corresponding LLM prompts for each data structure object. The results are stored in /tmp/GraphAnalysis.
-
 #### ComCat
 This plugin uses ChatGPT and requires a valid API key to be present when building the Docker image.
 Comcat uses ChatGPT to add comments to source code.
