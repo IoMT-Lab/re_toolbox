@@ -1,0 +1,8 @@
+---
+name: TypeInfer
+input_type: bytecode
+description: Perform type inferencing using an SSA graph
+type: python
+workdir: tools/typeinfer
+script: plugin.py
+---

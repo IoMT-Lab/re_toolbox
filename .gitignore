@@ -1,4 +1,4 @@
-/target
+**/target/**
 .env
 tools/degpt/chat_log.json
 .envrc

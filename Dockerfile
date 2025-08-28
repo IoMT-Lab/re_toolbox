@@ -8,32 +8,32 @@ RUN apt-get update \
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        ca-certificates \
-        clang-format \
-        temurin-21-jdk \
-        idle \
-        temurin-21-jdk\
-        clang-format \
-        # KLEE + Z3 system dependencies & build tools
-        build-essential \
-        cmake \
-        curl \
-        file \
-        g++-multilib \
-        gcc-multilib \
-        git \
-        unzip \
-        libcap-dev \
-        libgoogle-perftools-dev \
-        libncurses-dev \
-        libsqlite3-dev \
-        libtcmalloc-minimal4 \
-        graphviz \
-        doxygen \
-        clang-15 \
-        llvm-15 \
-        llvm-15-dev \
-        llvm-15-tools \
+    ca-certificates \
+    clang-format \
+    temurin-21-jdk \
+    idle \
+    temurin-21-jdk\
+    clang-format \
+    # KLEE + Z3 system dependencies & build tools
+    build-essential \
+    cmake \
+    curl \
+    file \
+    g++-multilib \
+    gcc-multilib \
+    git \
+    unzip \
+    libcap-dev \
+    libgoogle-perftools-dev \
+    libncurses-dev \
+    libsqlite3-dev \
+    libtcmalloc-minimal4 \
+    graphviz \
+    doxygen \
+    clang-15 \
+    llvm-15 \
+    llvm-15-dev \
+    llvm-15-tools \
     && rm -rf /var/lib/apt/lists/*
 
 ADD Python-3.12.10.tar.xz /python
@@ -87,15 +87,15 @@ WORKDIR /tmp/build_klee_src
 RUN git clone https://github.com/klee/klee.git . && \
     mkdir build && cd build && \
     cmake \
-        -DENABLE_SOLVER_STP=OFF \
-        -DENABLE_POSIX_RUNTIME=ON \
-        -DENABLE_UNIT_TESTS=ON \
-        -DKLEE_UCLIBC_PATH=/opt/klee-uclibc-built \
-        -DGTEST_SRC_DIR=/opt/googletest-source \
-        -DLLVM_DIR=/usr/lib/llvm-15/lib/cmake/llvm \
-        -Dgtest_build_tests=OFF \
-        # Add any other KLEE cmake options you need
-        .. && \
+    -DENABLE_SOLVER_STP=OFF \
+    -DENABLE_POSIX_RUNTIME=ON \
+    -DENABLE_UNIT_TESTS=ON \
+    -DKLEE_UCLIBC_PATH=/opt/klee-uclibc-built \
+    -DGTEST_SRC_DIR=/opt/googletest-source \
+    -DLLVM_DIR=/usr/lib/llvm-15/lib/cmake/llvm \
+    -Dgtest_build_tests=OFF \
+    # Add any other KLEE cmake options you need
+    .. && \
     make -j$(nproc) && \
     make install && \
     # Clean up the build directory
@@ -111,10 +111,12 @@ RUN cargo build
 RUN cd tools/comcat && pipenv install
 RUN cd tools/demangle && pipenv install
 RUN cd tools/degpt && pipenv install
+RUN cd tools/typeinfer/trex && cargo install --path . && pipenv install
 
 ENV PLUGIN_PATH=/app/plugins
 ENV GHIDRA_DIR=/app/tools/ghidra
 ENV ANGR_DIR=/app/tools/angr
+ENV TREX_PATH=/app/tools/typeinfer/trex/target/release/trex
 ENV CHAT_GPT_API_KEY="YOUR KEY HERE"
 
 CMD [ "/bin/bash", "-c", "/app/target/debug/re_toolbox" ]
