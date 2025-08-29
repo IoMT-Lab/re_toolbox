@@ -74,11 +74,14 @@ def main():
             logger.remove(0)
             analyze(ssa_filepath, varmap_filepath, output_file)
 
-            with open(output_file, 'r') as f:
-                for line in f:
-                    line = json.loads(line)
-                    print(line['type'])
-                    print()
+            with tempfile.NamedTemporaryFile(delete=False, mode='w') as of:
+                with open(output_file, 'r') as f:
+                    for line in f:
+                        line = json.loads(line)
+                        print(line['type'], file=of)
+                        print(file=of)
+                print(of.name)
+
     except Exception as e:
         print(str(e), file=sys.stderr)
         exit(1)

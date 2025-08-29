@@ -11,18 +11,29 @@ To build the docker image, run `./build_docker.sh.` from the root directory.
 It builds a specific version of python, so it may take some time on first build
 
 In order to use the ChatGPT-based plugins, you will have to add your OpenAI API key to the relevant location in the docker file
+In order to use the LLM-based decompiler, you will have to add your DeepSeek API key to the relevant location in the docker file
 
 #### Run Docker Image
 To run the docker image, run `./run_docker.sh`.
 This will create a docker container and drop you into the REPL.
 Note that the `exit` command is not currently working properly and you will need to
 use `CTRL+D` to quit the REPL.
-There are two folders that are created `graph` and `struct` that map to volumes within the container.
-These are used as auxilliary storage for the AccessPatternGraph output.
+
+### Decompilers
+There are currently two decompilers that are available for use, as seen by running `decompiler list`.
+Note: there are four decompilers listed, but 'LLM', 'RAG_mbpp', and 'RAG_exe_bench' are all the same
+LLM-based decompiler but with different configurations.
+
+![Decompiler List](screenshots/decompiler_list.png)
+
+By default, 'ghidra' is used as the decompiler. To change to a different decompiler, use `decompiler set <decompiler>`
+Be patient when running `decompiler decompile`, as the various decompilers can take upwards of a few minutes.
+
+![Decompiler Set](screenshots/decompiler_set.png)
 
 ### Plugins / Other tools
 Plugins are added via a YAML file in the `plugins` directory.
-There are currently six plugins and one not-quite plugin.
+There are currently six plugins available to be run on either source code or bytecode depending on the plugin.
 The `clang_format` and `demangle` plugins can be used as examples of a basic plugin.
 
 To view the available plugins, run `tool list`:
@@ -41,6 +52,8 @@ An example run of ComCat is the following:
 
 ![ComCat Example Part1](screenshots/comcat_example_1.png)
 ![ComCat Example Part2](screenshots/comcat_example_2.png)
+
+_New in this version:_ this plugin has been improved to provide better variable declaration commands, reduce overcommenting, and overall increase the quality of the comments.
 
 #### DeGPT
 This plugin uses ChatGPT and requires a valid API key to be present when building the Docker image
@@ -71,8 +84,28 @@ This plugin must be run on LLVM bytecode.
 - `load examples/wifi_new.bc bytecode`
 - `tool run klee`
 
-![KLEE Example](screenshots/klee_example.png)
-While the output suggests running `tool run klee /examples...`, that is not currently a valid command.
+Example executions of the plugin can be found below:
+
+![KLEE Example 1](screenshots/klee_example_1.png)
+![KLEE Example 2](screenshots/klee_example_2.png)
+![KLEE Example 3](screenshots/klee_example_3.png)
+
+
+#### TypeInfer
+This plugin uses a decompiled intermediate representation of a binary file to make inferences about structures that exist within the underlying code.
+It can be used to regain information regarding how pieces of data relate to each other -- for example, does a chunk of memory represent a linked list.
+Note: it cannot be run on every binary, as only a subset of the intermediate language is supported -- many of the example binaries will return an error mentioning INT_LESSEQUAL.
+
+An example run of TypeInfer is the following:
+
+- `load examples/linked-list-slo1.o bytecode`
+- `tool run TypeInfer`
+
+![TypeInfer Example](screenshots/typeinfer_example.png)
+
+As seen in the screenshot, the plugin was able to recreate a struct in which the first field is a pointer to another instance of the struct.
+This is the type of structure that would be expected for a linked list.
+The output of the plugin still requires interpretation, but by rebuilding at least parts of stucts that are present, the user has more context as to what the code is doing
 
 ### Examples
 
@@ -88,6 +121,15 @@ Decompiling a single function:
 
 ![Basic Example Output](screenshots/basic_example.png)
 
+Decompiling an entire function (with alternative decompiler):
+- `decompiler set rag-exe-bench`
+- `load examples/user_main.o bytecode`
+- `print`
+
+![Decompiler Example Output 1](screenshots/decompiler_example_1.png)
+
+![Decompiler Example Output 2](screenshots/decompiler_example_2.png)
+
 #### Basic Plugin usage
 
 Running a plugin and saving the resulting file:
@@ -101,23 +143,39 @@ Running a plugin and saving the resulting file:
 - `info`
 
 ![Plugin Example Output Pt1](screenshots/plugin_example_1.png)
+
 ![Plugin Example Output Pt2](screenshots/plugin_example_2.png)
 
 
 #### Comprehensive Example
 The tools and transformations can be chained together to incrementally change a file. 
+Importantly, we can swap out the original use of the Ghidra decompiler with the new LLM-based decompiler
 Suppose we want to decompile a binary, clean it up through DeGPT, add some comments to make it easier to understand, and lastly run it format it so that it is easier to read.
 That can be done with the following sequence. 
 After each operation, the current state of the file can be printed or the file can be saved for later review.
+Note: the `TypeInfer` plugin is not used in this example as there are no structs present in the example binary and the tool does not currently support some of the instructions used.
 
 - `load examples/user_main.o bytecode`
+- `decompiler set rag-exe-bench`
 - `decompiler decompile`
+
+![Comprehensive Example 1](screenshots/comprehensive_example_1.png)
+
 - `print`
+
+![Comprehensive Example 2](screenshots/comprehensive_example_2.png)
+
 - `tool run DeGPT`
 - `print`
+
+![Comprehensive Example 3](screenshots/comprehensive_example_3.png)
+
 - `tool run ComCat`
 - `print`
+
+![Comprehensive Example 4](screenshots/comprehensive_example_4.png)
+
 - `tool run clang_format`
 - `print`
 
-![Comprehensive Example](screenshots/comprehensive_example.png)
+![Comprehensive Example 5](screenshots/comprehensive_example_5.png)

@@ -142,7 +142,7 @@ impl Specialization {
                         } else {
                             Err(anyhow!(
                                 "Tool did not execute successfully: {:?}",
-                                str::from_utf8(&resp.stderr)?
+                                std::str::from_utf8(&resp.stderr)?
                             ))
                         }
                     }
@@ -169,7 +169,7 @@ impl Specialization {
                         } else {
                             Err(anyhow!(
                                 "Tool did not execute successfully: {:?}",
-                                str::from_utf8(&resp.stderr)?
+                                std::str::from_utf8(&resp.stderr)?
                             ))
                         }
                     }
