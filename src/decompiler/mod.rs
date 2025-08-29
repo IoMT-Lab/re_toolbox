@@ -7,6 +7,7 @@ use crate::{Format, Workspace};
 
 pub mod angr;
 pub mod ghidra;
+pub mod llm;
 
 #[derive(Subcommand, Debug)]
 pub enum DecompilerSubcommand {
@@ -36,6 +37,9 @@ pub struct DecompilerSetArgs {
 pub enum Decompiler {
     Ghidra,
     Angr,
+    LLM,
+    RAG_exe_bench,
+    RAG_mbpp,
 }
 
 impl Display for Decompiler {
@@ -46,6 +50,9 @@ impl Display for Decompiler {
             match self {
                 Self::Angr => "Angr",
                 Self::Ghidra => "Ghidra",
+                Self::LLM => "LLM",
+                Self::RAG_exe_bench => "RAG - exe_bench",
+                Self::RAG_mbpp => "RAG - mbpp",
             }
         )?;
         Ok(())
@@ -82,6 +89,9 @@ impl DecompilerSubcommand {
                             let function_names = match workspace.decompiler {
                                 Decompiler::Ghidra => ghidra::list_functions(&workfile.contents),
                                 Decompiler::Angr => angr::list_functions(&workfile.contents),
+                                Decompiler::LLM
+                                | Decompiler::RAG_exe_bench
+                                | Decompiler::RAG_mbpp => llm::list_functions(&workfile.contents),
                             };
 
                             if let Ok(functions) = function_names {
@@ -119,6 +129,21 @@ impl DecompilerSubcommand {
                                             println!("!! Decompiling with Angr is not currently supported !!");
                                             Err(anyhow!("bad"))
                                         }
+                                        Decompiler::LLM => llm::decompile_function(
+                                            &workfile.contents,
+                                            &function,
+                                            llm::Subtype::LLM,
+                                        ),
+                                        Decompiler::RAG_exe_bench => llm::decompile_function(
+                                            &workfile.contents,
+                                            &function,
+                                            llm::Subtype::RAG_exe_bench,
+                                        ),
+                                        Decompiler::RAG_mbpp => llm::decompile_function(
+                                            &workfile.contents,
+                                            &function,
+                                            llm::Subtype::RAG_mbpp,
+                                        ),
                                     }
                                 }
                                 None => {
@@ -134,6 +159,18 @@ impl DecompilerSubcommand {
                                             println!("!! Decompiling with Angr is not currently supported !!");
                                             Err(anyhow!("bad"))
                                         }
+                                        Decompiler::LLM => llm::decompile_all(
+                                            &workfile.contents,
+                                            llm::Subtype::LLM,
+                                        ),
+                                        Decompiler::RAG_exe_bench => llm::decompile_all(
+                                            &workfile.contents,
+                                            llm::Subtype::RAG_exe_bench,
+                                        ),
+                                        Decompiler::RAG_mbpp => llm::decompile_all(
+                                            &workfile.contents,
+                                            llm::Subtype::RAG_mbpp,
+                                        ),
                                     }
                                 }
                             };

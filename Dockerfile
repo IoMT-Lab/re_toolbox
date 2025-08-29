@@ -34,6 +34,8 @@ RUN apt-get update \
     llvm-15 \
     llvm-15-dev \
     llvm-15-tools \
+    gcc-arm-none-eabi \
+    binutils-arm-none-eabi \
     && rm -rf /var/lib/apt/lists/*
 
 ADD Python-3.12.10.tar.xz /python
@@ -117,6 +119,8 @@ ENV PLUGIN_PATH=/app/plugins
 ENV GHIDRA_DIR=/app/tools/ghidra
 ENV ANGR_DIR=/app/tools/angr
 ENV TREX_PATH=/app/tools/typeinfer/trex/target/release/trex
+ENV AI_DECOMP_PATH=/app/tools/ai_decomp/decomp/decompile.py
 ENV CHAT_GPT_API_KEY="YOUR KEY HERE"
+ENV DEEPSEEK_API_KEY="YOUR OTHER KEY HERE"
 
 CMD [ "/bin/bash", "-c", "/app/target/debug/re_toolbox" ]
