@@ -5,7 +5,6 @@ use clap::{Args, Subcommand, ValueEnum};
 
 use crate::{Format, Workspace};
 
-pub mod angr;
 pub mod ghidra;
 pub mod llm;
 
@@ -36,7 +35,6 @@ pub struct DecompilerSetArgs {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 pub enum Decompiler {
     Ghidra,
-    Angr,
     LLM,
     RAG_exe_bench,
     RAG_mbpp,
@@ -48,11 +46,10 @@ impl Display for Decompiler {
             f,
             "{}",
             match self {
-                Self::Angr => "Angr",
                 Self::Ghidra => "Ghidra",
                 Self::LLM => "LLM",
-                Self::RAG_exe_bench => "RAG - exe_bench",
-                Self::RAG_mbpp => "RAG - mbpp",
+                Self::RAG_exe_bench => "RAG_exe_bench",
+                Self::RAG_mbpp => "RAG_mbpp",
             }
         )?;
         Ok(())
@@ -77,8 +74,10 @@ impl DecompilerSubcommand {
             }
             DecompilerSubcommand::List => {
                 println!("Available decompilers: ");
-                println!("  {}", Decompiler::Angr);
                 println!("  {}", Decompiler::Ghidra);
+                println!("  {}", Decompiler::LLM);
+                println!("  {}", Decompiler::RAG_exe_bench);
+                println!("  {}", Decompiler::RAG_mbpp);
             }
             DecompilerSubcommand::ListFunctions => {
                 if let Some(workfile) = &workspace.active_file {
@@ -88,7 +87,6 @@ impl DecompilerSubcommand {
 
                             let function_names = match workspace.decompiler {
                                 Decompiler::Ghidra => ghidra::list_functions(&workfile.contents),
-                                Decompiler::Angr => angr::list_functions(&workfile.contents),
                                 Decompiler::LLM
                                 | Decompiler::RAG_exe_bench
                                 | Decompiler::RAG_mbpp => llm::list_functions(&workfile.contents),
@@ -125,10 +123,6 @@ impl DecompilerSubcommand {
                                             &workfile.contents,
                                             &function,
                                         ),
-                                        Decompiler::Angr => {
-                                            println!("!! Decompiling with Angr is not currently supported !!");
-                                            Err(anyhow!("bad"))
-                                        }
                                         Decompiler::LLM => llm::decompile_function(
                                             &workfile.contents,
                                             &function,
@@ -154,10 +148,6 @@ impl DecompilerSubcommand {
                                     match workspace.decompiler {
                                         Decompiler::Ghidra => {
                                             ghidra::decompile_all(&workfile.contents)
-                                        }
-                                        Decompiler::Angr => {
-                                            println!("!! Decompiling with Angr is not currently supported !!");
-                                            Err(anyhow!("bad"))
                                         }
                                         Decompiler::LLM => llm::decompile_all(
                                             &workfile.contents,
