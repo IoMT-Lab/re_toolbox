@@ -114,6 +114,7 @@ RUN cd tools/comcat && pipenv install
 RUN cd tools/demangle && pipenv install
 RUN cd tools/degpt && pipenv install
 RUN cd tools/typeinfer/trex && cargo install --path . && pipenv install
+RUN cd tools/ai_decomp && /usr/local/bin/pip3.12 install --break-system-packages -r requirements.txt
 
 ENV PLUGIN_PATH=/app/plugins
 ENV GHIDRA_DIR=/app/tools/ghidra
@@ -123,4 +124,5 @@ ENV AI_DECOMP_PATH=/app/tools/ai_decomp/decomp/decompile.py
 ENV CHAT_GPT_API_KEY="YOUR KEY HERE"
 ENV DEEPSEEK_API_KEY="YOUR OTHER KEY HERE"
 
+RUN ln -s /usr/local/bin/python3.12 /usr/local/bin/python3
 CMD [ "/bin/bash", "-c", "/app/target/debug/re_toolbox" ]
