@@ -119,6 +119,7 @@ RUN cd tools/ai_decomp && /usr/local/bin/pip3.12 install --break-system-packages
 
 ENV PLUGIN_PATH=/app/plugins
 ENV GHIDRA_DIR=/app/tools/ghidra
+ENV GHIDRA_PATH=${GHIDRA_DIR}/ghidra_11.4.2_PUBLIC
 ENV ANGR_DIR=/app/tools/angr
 ENV TREX_PATH=/app/tools/typeinfer/trex/target/release/trex
 ENV AI_DECOMP_PATH=/app/tools/ai_decomp/decomp/decompile.py
