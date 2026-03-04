@@ -16,11 +16,14 @@ path = "src/main.rs"
 [dependencies]
 dot = "0.1.4"
 itertools = "0.10.1"
-clap = { version = "3.0.5", features = ["derive"] } # TODO: Can we make this only a dependency of the binary and not the library?
+clap = { version = "3.0.5", features = [
+    "derive",
+] } # TODO: Can we make this only a dependency of the binary and not the library?
 sloggers = { version = "2.1.1", features = ["json"] }
 slog-scope = "4.4.0"
 slog = { version = "2.7.0", features = ["max_level_trace"] }
 lazy_static = "1.4.0"
+time-core = "=0.1.7"
 
 # Profiles are specified at the root of the workspace; in this case, ../Cargo.toml
 # [profile.release]

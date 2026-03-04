@@ -1,7 +1,8 @@
-FROM rust:latest
+# syntax=docker/dockerfile:1
+FROM rust:slim-bookworm
 
 RUN apt-get update \
-    && apt-get install -y apt-transport-https gpg \
+    && apt-get install -y apt-transport-https gpg wget \
     && wget -qO - https://packages.adoptium.net/artifactory/api/gpg/key/public | gpg --dearmor | tee /etc/apt/trusted.gpg.d/adoptium.gpg > /dev/null \
     && echo "deb https://packages.adoptium.net/artifactory/deb $(awk -F= '/^VERSION_CODENAME/{print$2}' /etc/os-release) main" | tee /etc/apt/sources.list.d/adoptium.list \
     && rm -rf /var/lib/apt/lists/*
@@ -9,8 +10,6 @@ RUN apt-get update \
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
     ca-certificates \
-    clang-format \
-    temurin-21-jdk \
     idle \
     temurin-21-jdk\
     clang-format \
@@ -36,6 +35,8 @@ RUN apt-get update \
     llvm-15-tools \
     gcc-arm-none-eabi \
     binutils-arm-none-eabi \
+    zlib1g-dev \ 
+    libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
 ADD Python-3.12.10.tar.xz /python
@@ -51,7 +52,7 @@ RUN /usr/local/bin/pip3.12 install --break-system-packages angr lit wllvm tabula
 
 # Stage 3: Build and install Z3 from source
 WORKDIR /tmp/build_z3_src
-RUN git clone https://github.com/Z3Prover/z3.git . && \
+RUN git clone --depth 1 --branch z3-4.15.4 https://github.com/Z3Prover/z3.git . && \
     python3 scripts/mk_make.py && \
     cd build && \
     make -j$(nproc) && \
