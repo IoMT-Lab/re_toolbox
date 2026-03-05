@@ -92,7 +92,8 @@ impl Tool {
 
                 let mut output = self.command.run(Some(tfile.path()))?;
                 output.remove(output.len() - 1);
-                let mut f = fs::File::open(&output)?;
+                let filename = output.split_inclusive('\n').last().unwrap();
+                let mut f = fs::File::open(&filename)?;
                 let mut new_contents = Vec::new();
                 f.read_to_end(&mut new_contents)?;
 

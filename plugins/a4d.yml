@@ -1,0 +1,9 @@
+---
+name: a4d
+input_type: bytecode
+output_type: source
+description: A multi-agent, constraint-guided decompilation framework
+type: python
+workdir: tools/agent4decompile
+script: plugin.py
+---

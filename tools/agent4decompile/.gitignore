@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Temp files
+.tmp/
+*.out
+.env
+
+# Compiled test binaries
+examples/hello_world
+!examples/hello_world.c
+
+# IDE
+.vscode/
+.idea/
