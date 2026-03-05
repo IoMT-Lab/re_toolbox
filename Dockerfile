@@ -111,6 +111,8 @@ COPY . /app
 WORKDIR /app
 RUN cargo build
 
+ENV PIPENV_VENV_IN_PROJECT=1
+RUN cd tools/angr && pipenv install
 RUN cd tools/comcat && pipenv install
 RUN cd tools/demangle && pipenv install
 RUN cd tools/degpt && pipenv install

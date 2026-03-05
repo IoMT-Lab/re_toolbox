@@ -5,6 +5,7 @@ use clap::{Args, Subcommand, ValueEnum};
 
 use crate::{Format, Workspace};
 
+pub mod angr;
 pub mod ghidra;
 pub mod llm;
 
@@ -34,6 +35,7 @@ pub struct DecompilerSetArgs {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 pub enum Decompiler {
+    Angr,
     Ghidra,
     LLM,
     RAG_exe_bench,
@@ -46,6 +48,7 @@ impl Display for Decompiler {
             f,
             "{}",
             match self {
+                Self::Angr => "Angr",
                 Self::Ghidra => "Ghidra",
                 Self::LLM => "LLM",
                 Self::RAG_exe_bench => "RAG_exe_bench",
@@ -74,6 +77,7 @@ impl DecompilerSubcommand {
             }
             DecompilerSubcommand::List => {
                 println!("Available decompilers: ");
+                println!("  {}", Decompiler::Angr);
                 println!("  {}", Decompiler::Ghidra);
                 println!("  {}", Decompiler::LLM);
                 println!("  {}", Decompiler::RAG_exe_bench);
@@ -86,6 +90,7 @@ impl DecompilerSubcommand {
                             println!("Running list_function from {}...", workspace.decompiler);
 
                             let function_names = match workspace.decompiler {
+                                Decompiler::Angr => angr::list_functions(&workfile.contents),
                                 Decompiler::Ghidra => ghidra::list_functions(&workfile.contents),
                                 Decompiler::LLM
                                 | Decompiler::RAG_exe_bench
@@ -119,6 +124,9 @@ impl DecompilerSubcommand {
                                         function, workspace.decompiler
                                     );
                                     match workspace.decompiler {
+                                        Decompiler::Angr => {
+                                            angr::decompile_function(&workfile.contents, &function)
+                                        }
                                         Decompiler::Ghidra => ghidra::decompile_function(
                                             &workfile.contents,
                                             &function,
@@ -146,6 +154,7 @@ impl DecompilerSubcommand {
                                         workspace.decompiler
                                     );
                                     match workspace.decompiler {
+                                        Decompiler::Angr => angr::decompile_all(&workfile.contents),
                                         Decompiler::Ghidra => {
                                             ghidra::decompile_all(&workfile.contents)
                                         }
