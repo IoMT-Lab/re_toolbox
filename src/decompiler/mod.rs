@@ -8,6 +8,7 @@ use crate::{Format, Workspace};
 pub mod angr;
 pub mod ghidra;
 pub mod llm;
+pub mod retdec;
 
 #[derive(Subcommand, Debug)]
 pub enum DecompilerSubcommand {
@@ -40,6 +41,7 @@ pub enum Decompiler {
     LLM,
     RAG_exe_bench,
     RAG_mbpp,
+    RetDec,
 }
 
 impl Display for Decompiler {
@@ -53,6 +55,7 @@ impl Display for Decompiler {
                 Self::LLM => "LLM",
                 Self::RAG_exe_bench => "RAG_exe_bench",
                 Self::RAG_mbpp => "RAG_mbpp",
+                Self::RetDec => "RetDec",
             }
         )?;
         Ok(())
@@ -82,6 +85,7 @@ impl DecompilerSubcommand {
                 println!("  {}", Decompiler::LLM);
                 println!("  {}", Decompiler::RAG_exe_bench);
                 println!("  {}", Decompiler::RAG_mbpp);
+                println!("  {}", Decompiler::RetDec)
             }
             DecompilerSubcommand::ListFunctions => {
                 if let Some(workfile) = &workspace.active_file {
@@ -95,6 +99,7 @@ impl DecompilerSubcommand {
                                 Decompiler::LLM
                                 | Decompiler::RAG_exe_bench
                                 | Decompiler::RAG_mbpp => llm::list_functions(&workfile.contents),
+                                Decompiler::RetDec => retdec::list_functions(&workfile.contents),
                             };
 
                             if let Ok(functions) = function_names {
@@ -146,6 +151,10 @@ impl DecompilerSubcommand {
                                             &function,
                                             llm::Subtype::RAG_mbpp,
                                         ),
+                                        Decompiler::RetDec => retdec::decompile_function(
+                                            &workfile.contents,
+                                            &function,
+                                        ),
                                     }
                                 }
                                 None => {
@@ -170,6 +179,9 @@ impl DecompilerSubcommand {
                                             &workfile.contents,
                                             llm::Subtype::RAG_mbpp,
                                         ),
+                                        Decompiler::RetDec => {
+                                            retdec::decompile_all(&workfile.contents)
+                                        }
                                     }
                                 }
                             };

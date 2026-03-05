@@ -37,6 +37,7 @@ RUN apt-get update \
     binutils-arm-none-eabi \
     zlib1g-dev \ 
     libssl-dev \
+    libbz2-dev \
     && rm -rf /var/lib/apt/lists/*
 
 ADD Python-3.12.10.tar.xz /python
@@ -47,6 +48,8 @@ RUN ./configure --enable-optimizations \
     && /usr/local/bin/pip3.12 install pipenv
 
 RUN /usr/local/bin/pip3.12 install --break-system-packages angr lit wllvm tabulate networkx scipy matplotlib
+
+ADD --unpack=true https://github.com/avast/retdec/releases/download/v5.0/RetDec-v5.0-Linux-Release.tar.xz /retdec
 
 # --- Building KLEE and dependencies from source ---
 
@@ -122,6 +125,7 @@ RUN cd tools/ai_decomp && /usr/local/bin/pip3.12 install --break-system-packages
 ENV PLUGIN_PATH=/app/plugins
 ENV GHIDRA_DIR=/app/tools/ghidra
 ENV GHIDRA_PATH=${GHIDRA_DIR}/ghidra_11.4.2_PUBLIC
+ENV RETDEC_PATH=/retdec/bin/retdec-decompiler
 ENV ANGR_DIR=/app/tools/angr
 ENV TREX_PATH=/app/tools/typeinfer/trex/target/release/trex
 ENV AI_DECOMP_PATH=/app/tools/ai_decomp/decomp/decompile.py
