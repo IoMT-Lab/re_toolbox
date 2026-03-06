@@ -20,8 +20,8 @@ Note that the `exit` command is not currently working properly and you will need
 use `CTRL+D` to quit the REPL.
 
 ### Decompilers
-There are currently two decompilers that are available for use, as seen by running `decompiler list`.
-Note: there are four decompilers listed, but 'LLM', 'RAG_mbpp', and 'RAG_exe_bench' are all the same
+There are currently four decompilers that are available for use, as seen by running `decompiler list`.
+Note: there are 6 decompilers listed, but 'LLM', 'RAG_mbpp', and 'RAG_exe_bench' are all the same
 LLM-based decompiler but with different configurations.
 
 ![Decompiler List](screenshots/decompiler_list.png)
@@ -33,12 +33,28 @@ Be patient when running `decompiler decompile`, as the various decompilers can t
 
 ### Plugins / Other tools
 Plugins are added via a YAML file in the `plugins` directory.
-There are currently six plugins available to be run on either source code or bytecode depending on the plugin.
+There are currently seven plugins available to be run on either source code or bytecode depending on the plugin.
 The `clang_format` and `demangle` plugins can be used as examples of a basic plugin.
 
 To view the available plugins, run `tool list`:
 
 ![Plugin List](screenshots/plugin_list.png)
+
+#### Agent4Decompile (a4d)
+This plugin uses ChatGPT and requires a valid API key to be present when building the Docker image
+Note: this plugin can take minutes to run, and there is no output until it is completed, so be patient.
+
+Agent4Decompile converts bytecode into decompiled source code through a constraint guided refinement process
+This plugin is more effective on complete binary executables, as compilation and executation are used in the refinement process, but can also be used on partial object files
+As LLMs are used in this process, the exact result can change from run to run
+An example run of Agent4Decompile is the following:
+
+- `load examples/user_main.o bytecode`
+- `tool run a4d`
+- `print`
+
+![A4D Example Part1](screenshots/a4d_example_1.png)
+![A4D Example Part2](screenshots/a4d_example_2.png)
 
 #### ComCat
 This plugin uses ChatGPT and requires a valid API key to be present when building the Docker image.
@@ -52,8 +68,6 @@ An example run of ComCat is the following:
 
 ![ComCat Example Part1](screenshots/comcat_example_1.png)
 ![ComCat Example Part2](screenshots/comcat_example_2.png)
-
-_New in this version:_ this plugin has been improved to provide better variable declaration commands, reduce overcommenting, and overall increase the quality of the comments.
 
 #### DeGPT
 This plugin uses ChatGPT and requires a valid API key to be present when building the Docker image
