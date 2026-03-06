@@ -224,10 +224,6 @@ output_file = "{output_path}"
 writer = PrintWriter(File(output_file))
 
 writer.println("// Decompiled with Ghidra")
-writer.println("#include <stdio.h>")
-writer.println("#include <stdlib.h>")
-writer.println("#include <string.h>")
-writer.println("")
 
 if currentProgram is not None:
     decompiler = DecompInterface()

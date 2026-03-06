@@ -53,7 +53,8 @@ def detect_arch_angr(binary_path: str) -> str:
     """Detect architecture using angr's loader (more precise)."""
     try:
         import angr
-        proj = angr.Project(binary_path, auto_load_libs=False, load_debug_info=False)
+        proj = angr.Project(
+            binary_path, auto_load_libs=False, load_debug_info=False)
         arch_name = proj.arch.name.lower()
         if "amd64" in arch_name or "x86" in arch_name:
             return "x86_64"
@@ -91,7 +92,8 @@ def ensure_arm_docker() -> bool:
         return True
 
     # Try to build it
-    dockerfile = Path(__file__).resolve().parent.parent / "docker" / "Dockerfile.arm"
+    dockerfile = Path(__file__).resolve().parent.parent / \
+        "docker" / "Dockerfile.arm"
     if not dockerfile.exists():
         return False
 
@@ -119,7 +121,7 @@ def get_gcc_for_arch(arch: str) -> list[str]:
     """
     if arch in ("x86_64", "x86", "unknown"):
         return ["gcc"]
-    return []  # ARM uses docker_compile
+    return ['arm-none-eabi-gcc']  # ARM uses docker_compile
 
 
 def docker_compile(

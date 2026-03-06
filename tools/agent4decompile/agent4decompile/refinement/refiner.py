@@ -40,7 +40,7 @@ except ImportError:
 # Pre-processing helper
 # ═══════════════════════════════════════════════════════════════════════════
 
-def preprocess_decompiled_code(code: str, decompiler: str) -> str:
+def preprocess_decompiled_code(code: str, decompiler: str, include_std_headers: bool = True) -> str:
     """
     Clean up raw decompiled C code before sending to the LLM.
 
@@ -106,10 +106,11 @@ def preprocess_decompiled_code(code: str, decompiler: str) -> str:
     code = '\n'.join(cleaned)
 
     # ── 3. Ensure standard headers ────────────────────────────────────────
-    headers = ['<stdio.h>', '<stdlib.h>', '<string.h>']
-    for h in headers:
-        if h not in code:
-            code = f'#include {h}\n' + code
+    if include_std_headers:
+        headers = ['<stdio.h>', '<stdlib.h>', '<string.h>']
+        for h in headers:
+            if h not in code:
+                code = f'#include {h}\n' + code
 
     return code
 
@@ -158,13 +159,14 @@ class ConstraintEvaluator:
                 path = f.name
 
             if self._is_arm:
-                from ..arch import docker_compile
-                ok, err = docker_compile(
-                    path, "/dev/null", arch=self.architecture, syntax_only=True)
+                res = subprocess.run(
+                    ['arm-none-eabi-gcc', '-fsyntax-only', '-w', path],
+                    capture_output=True, text=True, timeout=30,
+                )
                 os.unlink(path)
-                if ok:
-                    return True, "✅ Valid C syntax (ARM cross-check)"
-                return False, f"❌ Syntax errors (ARM):\n{err[:500]}"
+                if res.returncode == 0:
+                    return True, "✅ Valid C syntax"
+                return False, f"❌ Syntax errors (ARM):\n{res.stderr[:500]}"
             else:
                 res = subprocess.run(
                     ['gcc', '-fsyntax-only', '-w', path],
@@ -188,16 +190,18 @@ class ConstraintEvaluator:
             bin_path = str(self.temp_dir / f"{Path(c_path).stem}.out")
 
             if self._is_arm:
-                from ..arch import docker_compile
-                ok, err = docker_compile(
-                    c_path, bin_path, arch=self.architecture)
+                env = {**os.environ, 'TMPDIR': str(self.temp_dir)}
+                res = subprocess.run(
+                    ['arm-none-eabi-gcc', '-w', '-o', bin_path, c_path],
+                    capture_output=True, text=True, timeout=60, env=env,
+                )
                 os.unlink(c_path)
-                if ok:
+                if res.returncode == 0:
                     self._last_compiled = bin_path
-                    return True, "✅ Compiles successfully (ARM cross-compile)"
+                    return True, "✅ Compiles successfully"
                 if os.path.exists(bin_path):
                     os.unlink(bin_path)
-                return False, f"❌ Compilation errors (ARM):\n{err[:500]}"
+                return False, f"❌ Compilation errors:\n{res.stderr[:500]}"
             else:
                 env = {**os.environ, 'TMPDIR': str(self.temp_dir)}
                 res = subprocess.run(
@@ -489,7 +493,8 @@ class MCGDRefiner:
         Returns:
             ``RefinementResult`` with the best code found.
         """
-        current = preprocess_decompiled_code(initial_code, decompiler)
+        current = preprocess_decompiled_code(
+            initial_code, decompiler, self.architecture != 'arm')
         history: list[dict] = []
         best_code = current
         best_score = 0  # 0=nothing, 1=syntax, 2=compiles, 3=re-executable

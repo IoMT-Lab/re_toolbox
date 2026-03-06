@@ -134,7 +134,7 @@ class Agent4DecompilePipeline:
             arch = self.architecture
             print(f"[0/4] Using specified architecture: {arch}")
 
-        is_arm = arch in ("aarch64", "arm")
+        is_arm = arch in ("aarch64")
         if is_arm:
             from .arch import ensure_arm_docker
             if not ensure_arm_docker():
@@ -183,13 +183,15 @@ class Agent4DecompilePipeline:
         # ── Stage 3: Generate test cases ──────────────────────────────────
         if test_cases is None:
             print(f"[2/4] Generating test cases…")
-            test_cases = self._generate_tests(binary_path, binary_name, initial_code, arch)
+            test_cases = self._generate_tests(
+                binary_path, binary_name, initial_code, arch)
             print(f"    → Generated {len(test_cases)} test cases")
         else:
             print(f"[2/4] Using {len(test_cases)} provided test cases")
 
         # ── Stage 4: LLM Iterative Refinement ────────────────────────────
-        print(f"[3/4] Running LLM refinement (max {self.max_iterations} iterations)…")
+        print(
+            f"[3/4] Running LLM refinement (max {self.max_iterations} iterations)…")
         refiner = MCGDRefiner(
             llm_provider=self.llm_provider,
             model=self.model,
@@ -247,8 +249,10 @@ class Agent4DecompilePipeline:
         # ── Print summary ─────────────────────────────────────────────────
         status = "✅ SUCCESS" if result.success else "❌ INCOMPLETE"
         print(f"\n{'='*60}")
-        print(f"  {status}  |  {result.iterations} iterations  |  {result.elapsed_seconds:.1f}s")
-        print(f"  Syntax: {result.syntax_valid}  |  Compiles: {result.compiles}  |  Re-executable: {result.re_executable}")
+        print(
+            f"  {status}  |  {result.iterations} iterations  |  {result.elapsed_seconds:.1f}s")
+        print(
+            f"  Syntax: {result.syntax_valid}  |  Compiles: {result.compiles}  |  Re-executable: {result.re_executable}")
         print(f"  Output: {refined_path}")
         print(f"{'='*60}\n")
 
